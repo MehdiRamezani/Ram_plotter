@@ -1,0 +1,60 @@
+# The class extractor can extract all the variables, and plot horizontal linecuts, and 
+# vertical lincuts, from a 2D map at any setpoint value. 
+## idd= , rows= , columns= are required. They define which measurements is parsing.
+import numpy as np
+
+class extractor:
+    def __init__(self, idd, rows, columns, setpoint):
+        #super().__init__(name = "gate_meta", unit='V')
+        self._idd = idd
+        self._rows= rows
+        self._columns= columns
+        self._setpoint = setpoint
+   
+    def hline ( idd, rows, columns, setpoint):
+        B, B_label, B_unit = np.reshape(idd[:,0], ( columns , rows )) , r"$B$" , r"(T)" 
+        V_bg, V_bg_label, V_bg_unit= np.reshape(idd[:,1], ( columns ,  rows)) , r"$V_\mathrm{BG}$" , r"(V)" 
+        R, R_label, R_unit= np.reshape(idd[:,2], (  columns ,  rows )) , r"$R$" , r"($\Omega$)" 
+        G, G_label, G_unit = np.reshape(idd[:,3], (  columns ,  rows )) , r"$\mathrm{d{I/\mathrm{d}V$" , r"(e$^2$/h)" 
+        
+        
+        # Subtracting a polynomial background from the measurements:
+        # make a matrix of the size of the x values
+        bkg_map_R = np.zeros_like(V_bg)    # an empty image for background fits
+        bkg_map_G = np.zeros_like(V_bg)    # an empty image for background fits
+        # function to to fitting
+        for col in np.arange(V_bg.shape[1]):  # for the length of the column (i.e. each column ...)
+            fit_id_R = np.polyfit(B[: , col] , R[: , col] , 9) # Fit poly over bkg rows for col
+            bkg_map_R[: , col]= np.polyval(fit_id_R , B[: , col])   # Eval poly at ALL row positions
+            fit_id_G = np.polyfit(B[: , col] , G[: , col] , 9) # Fit poly over bkg rows for col
+            bkg_map_G[: , col]= np.polyval(fit_id_G , B[: , col])   # Eval poly at ALL row positions
+        R_sub = R-bkg_map_R
+        G_sub = G-bkg_map_G
+           
+        # if condition to check if it is sweep up or sweep down     
+        if V_bg[0,0] < V_bg[0,1]:
+            indx_x = np.where( V_bg[0,:] >= float(setpoint))
+            indx_x = indx_x[0][0]
+            
+            # extract the valus from the y value, and assign it for the new 2D graph
+            hline_x= B[: , indx_x] # x axis of 2D graph 
+            R_hline= R[: , indx_x] # y axis of 2D graph
+            G_hline= G[: , indx_x] # y axis of 2D graph
+            
+            R_sub_hline= R_sub[: , indx_x] # y axis of 2D graph
+            G_sub_hline= G_sub[: , indx_x] # y axis of 2D graph
+            
+            return (hline_x , R_hline , G_hline, R_sub, G_sub, R_sub_hline, G_sub_hline, B , V_bg)
+        else:
+            indx_x = np.where( V_bg[0,:] <= float(setpoint))
+            indx_x = indx_x[0][0]
+            
+            # extract the valus from the y value, and assign it for the new 2D graph
+            hline_x= B[: , indx_x] # x axis of 2D graph 
+            R_hline= R[: , indx_x] # y axis of 2D graph
+            G_hline= G[: , indx_x] # y axis of 2D graph
+            
+            R_sub_hline= R_sub[: , indx_x] # y axis of 2D graph
+            G_sub_hline= G_sub[: , indx_x] # y axis of 2D graph
+            
+            return (hline_x , R_hline , G_hline, R_sub, G_sub, R_sub_hline, G_sub_hline, B, V_bg)
